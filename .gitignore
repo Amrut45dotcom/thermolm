@@ -1,0 +1,13 @@
+/models/
+
+/thermolm/
+
+/images/
+
+/data/
+
+/exp/
+
+structure.txt
+compare.py
+compare2.py
