@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 os.makedirs('models', exist_ok=True)
 
 # ── Load ──────────────────────────────────────────────────────────────────────
-df = pd.read_csv('FeNdB_ML_dataset_long_constrained.csv')
+df = pd.read_csv('data/FeNdB_ML_dataset_long_constrained.csv')
 
 PHASES   = sorted(df['phase'].unique().tolist())
 FEATURES = ['x_Nd', 'x_B', 'temperature_C']
@@ -23,12 +23,10 @@ LOOKUP_PHASES = [p for p in PHASES if p != 'LIQUID']
 lookup_table  = (df[df['phase'].isin(LOOKUP_PHASES)]
                  .groupby('phase')[['X_Nd','X_B','X_Fe']]
                  .mean().round(6))
-joblib.dump(lookup_table, 'models/lookup_table.pkl')
+joblib.dump(lookup_table, 'models/lookup_table_constrained.pkl')
 print("Lookup table saved.\n")
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PART 1 — Classification (LightGBM, Binary Relevance)
-# ═══════════════════════════════════════════════════════════════════════════════
+
 
 # build classification table
 ct_df = (df.groupby(FEATURES)['phase']
@@ -87,9 +85,9 @@ joblib.dump(classifiers, 'models/lgbm_classifiers_constrained.pkl')
 print("Classifiers saved → models/lgbm_classifiers_constrained.pkl\n")
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+
 # PART 2 — NP Regression (RandomForest, one per phase)
-# ═══════════════════════════════════════════════════════════════════════════════
+
 print("=== NP Regression CV (5-fold) ===")
 print(f"{'Phase':<15} {'Mean R²':>10} {'Std R²':>10} {'Rows':>6}")
 print("-" * 44)
@@ -127,9 +125,9 @@ joblib.dump(np_regressors, 'models/rf_np_regressors_constrained.pkl')
 print("\nNP regressors saved → models/rf_np_regressors_constrained.pkl\n")
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+
 # PART 3 — LIQUID composition regressor
-# ═══════════════════════════════════════════════════════════════════════════════
+
 print("Training LIQUID composition regressor...")
 liquid_df = df[df['phase'] == 'LIQUID']
 X_liq = liquid_df[FEATURES].values
