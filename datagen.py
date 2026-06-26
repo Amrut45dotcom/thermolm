@@ -14,9 +14,8 @@ components = ['ND', 'FE', 'B', 'VA']
 phases = list(db.phases.keys())
 print('Phases in DB:', phases)
 
-T_celsius = np.arange(300, 1550, 50)   # 300°C … 1500°C, step 50
-T_kelvin  = T_celsius + 273.15         # 573K … 1823K — within ND function limit of 1800K
-                                        # NOTE: ND Gibbs functions only parametrized to 1800K
+T_celsius = np.arange(300, 1550, 50)  
+T_kelvin  = T_celsius + 273.15         
 
 
 # ── Composition Validity ─────────────────────────────────────────────────────
@@ -26,7 +25,7 @@ def valid_mask(nd, b, tol=1e-9):
 
 
 # ── 1) LHS Sampling ──────────────────────────────────────────────────────────
-# Two independent variables: x_Nd, x_B  (x_Fe = 1 - x_Nd - x_B)
+
 n_lhs = 300
 sampler = qmc.LatinHypercube(d=2, seed=42)
 lhs_raw = sampler.random(n=n_lhs)

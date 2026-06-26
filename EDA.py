@@ -6,8 +6,45 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import seaborn as sns
 
+
+# import pandas as pd
+
+# df = pd.read_csv('data/FeNdB_ML_dataset_long_constrained.csv')
+
+# # Pearson correlations apply to numeric columns; ``phase`` is categorical.
+# numeric_df = df.select_dtypes(include=np.number)
+# pearson_corr = numeric_df.corr(method='pearson')
+
+# print("Pearson correlation matrix:")
+# print(pearson_corr.round(4).to_string())
+
+# # Pearson correlation heatmap
+# fig, ax = plt.subplots(figsize=(10, 8))
+# sns.heatmap(
+#     pearson_corr,
+#     annot=True,
+#     fmt='.2f',
+#     cmap='coolwarm',
+#     vmin=-1,
+#     vmax=1,
+#     center=0,
+#     square=True,
+#     linewidths=0.5,
+#     cbar_kws={'label': 'Pearson correlation'},
+#     ax=ax,
+# )
+# ax.set_title('Pearson Correlation Heatmap')
+# plt.tight_layout()
+# plt.savefig('pearson_correlation_heatmap.png', dpi=150, bbox_inches='tight')
+# plt.close(fig)
+# print("Saved: pearson_correlation_heatmap.png")
+
+# sns.pairplot(df, vars=['x_Nd', 'x_B', 'temperature_C', 'NP'], hue='phase', palette='tab10', plot_kws={'alpha': 0.5})
+# plt.savefig('pairplot.png', dpi=150, bbox_inches='tight')
+
+
 # ── Load ────────────────────────────────────────────────────────────────────
-df = pd.read_csv('FeNdB_ML_dataset_long.csv')
+df = pd.read_csv('data/FeNdB_dataset_long.csv')
 
 # ── Quick stats ─────────────────────────────────────────────────────────────
 print("Shape:", df.shape)
