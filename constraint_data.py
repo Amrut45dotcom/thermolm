@@ -14,16 +14,11 @@ components = ['ND', 'FE', 'B', 'VA']
 phases = list(db.phases.keys())
 print('Phases in DB:', phases)
 
-T_celsius = np.arange(300, 1550, 50)   # 300°C … 1500°C, step 50
-T_kelvin  = T_celsius + 273.15         # 573K … 1823K — within ND function limit of 1800K
-                                        # NOTE: ND Gibbs functions only parametrized to 1800K
+T_celsius = np.arange(300, 1550, 50)  
+T_kelvin  = T_celsius + 273.15        
 
 
-# ── Constrained Composition Sampling: Fe 60-70%, Nd 20-35%, B 0.1-2% ─────────
-# Three bounds, two free variables (Nd, B) since Fe = 1 - Nd - B.
-# Strategy: oversample (Nd, B) via LHS inside their individual boxes,
-# then reject any point whose IMPLIED Fe falls outside [0.60, 0.70].
-# Repeat until the target number of valid points is reached.
+
 
 TARGET_N = 300
 
@@ -47,8 +42,6 @@ def sample_constrained_box(target_n, seed=42, batch_size=None, max_attempts=20):
     points are collected (or max_attempts batches are exhausted).
     """
     if batch_size is None:
-        # oversample heavily — at B<=0.02, Fe>=0.60 effectively requires
-        # Nd >= ~0.28-0.30, so roughly half the Nd range gets rejected
         batch_size = target_n * 4
 
     nd_valid, b_valid = [], []
@@ -67,8 +60,7 @@ def sample_constrained_box(target_n, seed=42, batch_size=None, max_attempts=20):
         b_valid.append(b_batch[mask])
 
         attempt += 1
-        rng_seed += 1  # vary seed each retry so we're not redrawing the same batch
-
+        rng_seed += 1  
     nd_all = np.concatenate(nd_valid)
     b_all  = np.concatenate(b_valid)
 
@@ -100,7 +92,7 @@ if nd_all.min() > nd_lo + 1e-6:
           f'with B<=0.02 makes Nd < {nd_all.min():.3f} infeasible. '
           f'Flag this to the professor — the stated bounds overconstrain.')
 
-# de-duplicate, same as original script
+
 coords = np.round(np.stack([nd_all, b_all], axis=1), 4)
 _, unique_idx = np.unique(coords, axis=0, return_index=True)
 nd_all = nd_all[unique_idx]
@@ -110,8 +102,7 @@ fe_all = fe_all[unique_idx]
 print(f'After dedup: {len(nd_all)} unique composition points')
 
 
-# ── Equilibrium Calculations ─────────────────────────────────────────────────
-# Calculate on a finer T grid, then interpolate to target grid
+
 T_calc_K = np.arange(T_kelvin[0] - 50, T_kelvin[-1] + 100, 25)
 all_eq_results = []
 
@@ -137,7 +128,7 @@ for i in range(len(nd_all)):
 print('Equilibrium calculations complete.')
 
 
-# ── Interpolation Helper ─────────────────────────────────────────────────────
+
 def interp_to_grid(values, src_T, tgt_T, fill=np.nan):
     """Linear interpolation from calculation grid to target temperature grid."""
     nan_mask = np.isnan(values)
@@ -151,7 +142,7 @@ def interp_to_grid(values, src_T, tgt_T, fill=np.nan):
     return f(tgt_T)
 
 
-# ── Extract Phase Data ───────────────────────────────────────────────────────
+
 rows = []
 
 for idx, eq in all_eq_results:
@@ -222,7 +213,7 @@ for idx, eq in all_eq_results:
 print(f'Extracted {len(rows)} rows.')
 
 
-# ── Build DataFrame & Reorder Columns ───────────────────────────────────────
+
 df = pd.DataFrame(rows)
 
 comp_cols = ['x_Nd', 'x_B', 'x_Fe']
@@ -256,7 +247,7 @@ for pname in all_phases_found:
         print(f'  {pname}: {missing*100:.1f}% NaN')
 
 
-# ── Save Wide Format ─────────────────────────────────────────────────────────
+
 df.to_excel('FeNdB_dataset.xlsx', index=False)
 df.to_csv('FeNdB_dataset.csv', index=False)
 print('Saved wide format: FeNdB_dataset.xlsx / .csv')
@@ -266,15 +257,15 @@ print('Saved wide format: FeNdB_dataset.xlsx / .csv')
 def parse_col(col):
     parts = col.split('_')
     if parts[0] == 'NP':
-        # NP_FE14ND2B_300C or NP_BCC_A2_300C
+        
         temp = int(parts[-1].replace('C', ''))
-        phase = '_'.join(parts[1:-1])   # handles BCC_A2, FCC_A1 correctly
+        phase = '_'.join(parts[1:-1])   
         return 'NP', phase, temp
     else:
-        # X_Nd_FE14ND2B_300C or X_Nd_BCC_A2_300C
-        prop  = f'{parts[0]}_{parts[1]}'        # X_Nd / X_B / X_Fe
+        
+        prop  = f'{parts[0]}_{parts[1]}'        
         temp  = int(parts[-1].replace('C', ''))
-        phase = '_'.join(parts[2:-1])            # handles BCC_A2, FCC_A1 correctly
+        phase = '_'.join(parts[2:-1])           
         return prop, phase, temp
 
 
