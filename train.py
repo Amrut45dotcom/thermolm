@@ -2,141 +2,118 @@ import pandas as pd
 import numpy as np
 import os
 import joblib
-from sklearn.model_selection import StratifiedKFold, KFold
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.metrics import f1_score, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.dummy import DummyClassifier
 from sklearn.base import clone
 import lightgbm as lgb
 import warnings
 warnings.filterwarnings('ignore')
 
 os.makedirs('models', exist_ok=True)
+os.makedirs('reports', exist_ok=True)
 
-# ── Load ──────────────────────────────────────────────────────────────────────
-df = pd.read_csv('data/FeNdB_ML_dataset_long_constrained.csv')
+NP_TRACE_THRESHOLD = 0.005
 
+# ── Load ───────────────────────────────────────────────────────────────────────
+df = pd.read_csv('data/FeNdB_dataset_long.csv')
 PHASES   = sorted(df['phase'].unique().tolist())
 FEATURES = ['x_Nd', 'x_B', 'temperature_C']
 
-# ── Lookup table ──────────────────────────────────────────────────────────────
+print(f"Dataset: {len(df)} rows | {df['x_Nd'].nunique()} compositions | {len(PHASES)} phases")
+print(f"Phases: {PHASES}\n")
+
+# ── Composition-level train/test split (80/20) ─────────────────────────────────
+unique_comps = df[['x_Nd', 'x_B', 'x_Fe']].drop_duplicates().reset_index(drop=True)
+train_comps, test_comps = train_test_split(unique_comps, test_size=0.2, random_state=42)
+train_mask = df.set_index(['x_Nd', 'x_B', 'x_Fe']).index.isin(
+    train_comps.set_index(['x_Nd', 'x_B', 'x_Fe']).index)
+df_train = df[train_mask].reset_index(drop=True)
+df_test  = df[~train_mask].reset_index(drop=True)
+print(f"Train: {df_train['x_Nd'].nunique()} compositions ({len(df_train)} rows)")
+print(f"Test:  {df_test['x_Nd'].nunique()} compositions ({len(df_test)} rows)\n")
+
+# ── Lookup table (stoichiometric phases) ───────────────────────────────────────
 LOOKUP_PHASES = [p for p in PHASES if p != 'LIQUID']
-lookup_table  = (df[df['phase'].isin(LOOKUP_PHASES)]
-                 .groupby('phase')[['X_Nd','X_B','X_Fe']]
-                 .mean().round(6))
+lookup_table  = (df_train[df_train['phase'].isin(LOOKUP_PHASES)]
+                 .groupby('phase')[['X_Nd', 'X_B', 'X_Fe']].mean().round(6))
 joblib.dump(lookup_table, 'models/lookup_table_constrained.pkl')
-print("Lookup table saved.\n")
+print("Lookup table saved.")
 
+# ── Build classification table ─────────────────────────────────────────────────
+def build_cls_table(data, threshold=NP_TRACE_THRESHOLD):
+    ct = data.groupby(FEATURES)['phase'].apply(lambda x: set(x)).reset_index()
+    ct.columns = FEATURES + ['phases_present']
+    np_pivot = (data[data['NP'] >= threshold]
+                .groupby(FEATURES)['phase'].apply(lambda x: set(x)).reset_index())
+    np_pivot.columns = FEATURES + ['phases_above_threshold']
+    ct = ct.merge(np_pivot, on=FEATURES, how='left')
+    ct['phases_above_threshold'] = ct['phases_above_threshold'].apply(
+        lambda x: x if isinstance(x, set) else set())
+    for phase in PHASES:
+        ct[phase] = ct['phases_above_threshold'].apply(lambda s: int(phase in s))
+    return ct.drop(columns=['phases_present', 'phases_above_threshold'])
 
+ct_train = build_cls_table(df_train)
+X_cls_train = ct_train[FEATURES].values
+y_cls_train = ct_train[PHASES].values
 
-# build classification table
-ct_df = (df.groupby(FEATURES)['phase']
-           .apply(lambda x: set(x)).reset_index())
-ct_df.columns = FEATURES + ['phases_present']
-for phase in PHASES:
-    ct_df[phase] = ct_df['phases_present'].apply(lambda s: int(phase in s))
-ct_df = ct_df.drop(columns=['phases_present'])
-
-X_cls = ct_df[FEATURES].values
-y_cls = ct_df[PHASES].values
-
-def make_lgbm(y_train_binary):
-    neg = (y_train_binary == 0).sum()
-    pos = (y_train_binary == 1).sum()
-    spw = neg / pos if pos > 0 else 1.0
-    return lgb.LGBMClassifier(n_estimators=200, max_depth=6, learning_rate=0.1,
-                               scale_pos_weight=spw, random_state=42, verbose=-1)
-
-# ── 5-fold CV for classification ──────────────────────────────────────────────
-print("=== Classification CV (5-fold) ===")
-print(f"{'Phase':<15} {'Mean F1':>10} {'Std F1':>10}")
-print("-" * 37)
-
-kf = KFold(n_splits=5, shuffle=True, random_state=42)
-cls_cv_results = {}
-
-for i, phase in enumerate(PHASES):
-    fold_f1s = []
-    for train_idx, val_idx in kf.split(X_cls):
-        X_tr, X_val = X_cls[train_idx], X_cls[val_idx]
-        y_tr, y_val = y_cls[train_idx, i], y_cls[val_idx, i]
-        clf = make_lgbm(y_tr)
-        clf.fit(X_tr, y_tr)
-        y_pred = clf.predict(X_val)
-        fold_f1s.append(f1_score(y_val, y_pred, zero_division=0))
-    mean_f1 = np.mean(fold_f1s)
-    std_f1  = np.std(fold_f1s)
-    cls_cv_results[phase] = (mean_f1, std_f1)
-    print(f"{phase:<15} {mean_f1:>10.4f} {std_f1:>10.4f}")
-
-macro_mean = np.mean([v[0] for v in cls_cv_results.values()])
-macro_std  = np.mean([v[1] for v in cls_cv_results.values()])
-print("-" * 37)
-print(f"{'MACRO':<15} {macro_mean:>10.4f} {macro_std:>10.4f}")
-
-# ── Train final classifiers on full data ─────────────────────────────────────
-print("\nTraining final classifiers on constrained data...")
+# ── Train LightGBM classifiers (one per phase) ────────────────────────────────
+print("Training LightGBM classifiers...")
 classifiers = {}
 for i, phase in enumerate(PHASES):
-    clf = make_lgbm(y_cls[:, i])
-    clf.fit(X_cls, y_cls[:, i])
+    y_tr = y_cls_train[:, i]
+    neg, pos = (y_tr == 0).sum(), (y_tr == 1).sum()
+    spw = neg / pos if pos > 0 else 1.0
+    clf = lgb.LGBMClassifier(n_estimators=200, max_depth=6, learning_rate=0.1,
+                              scale_pos_weight=spw, random_state=42, verbose=-1)
+    if len(np.unique(y_tr)) < 2:
+        clf = DummyClassifier(strategy='constant', constant=y_tr[0])
+    clf.fit(X_cls_train, y_tr)
     classifiers[phase] = clf
-
 joblib.dump(classifiers, 'models/lgbm_classifiers_constrained.pkl')
-print("Classifiers saved → models/lgbm_classifiers_constrained.pkl\n")
+print("LightGBM classifiers saved.")
 
-
-
-# PART 2 — NP Regression (RandomForest, one per phase)
-
-print("=== NP Regression CV (5-fold) ===")
-print(f"{'Phase':<15} {'Mean R²':>10} {'Std R²':>10} {'Rows':>6}")
-print("-" * 44)
-
-kf_reg = KFold(n_splits=5, shuffle=True, random_state=42)
+# ── Train NP regressors (RandomForest, one per phase) ─────────────────────────
+print("Training NP regressors...")
 np_regressors = {}
-
 for phase in PHASES:
-    phase_df = df[df['phase'] == phase]
-    if len(phase_df) < 50:
-        print(f"{phase:<15} {'skipped (< 50 rows)':>28}")
+    phase_train = df_train[df_train['phase'] == phase]
+    if len(phase_train) < 50:
         continue
-
-    X_reg = phase_df[FEATURES].values
-    y_reg = phase_df['NP'].values
-
-    fold_r2s = []
-    for train_idx, val_idx in kf_reg.split(X_reg):
-        X_tr, X_val = X_reg[train_idx], X_reg[val_idx]
-        y_tr, y_val = y_reg[train_idx], y_reg[val_idx]
-        rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
-        rf.fit(X_tr, y_tr)
-        fold_r2s.append(r2_score(y_val, rf.predict(X_val)))
-
-    mean_r2 = np.mean(fold_r2s)
-    std_r2  = np.std(fold_r2s)
-    print(f"{phase:<15} {mean_r2:>10.4f} {std_r2:>10.4f} {len(phase_df):>6}")
-
-    # train final on full phase data
-    rf_final = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
-    rf_final.fit(X_reg, y_reg)
-    np_regressors[phase] = rf_final
-
+    X_tr = phase_train[FEATURES].values
+    y_tr = phase_train['NP'].values
+    rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    rf.fit(X_tr, y_tr)
+    np_regressors[phase] = rf
 joblib.dump(np_regressors, 'models/rf_np_regressors_constrained.pkl')
-print("\nNP regressors saved → models/rf_np_regressors_constrained.pkl\n")
+print("NP regressors saved.")
 
-
-
-# PART 3 — LIQUID composition regressor
-
+# ── Train LIQUID internal composition regressor ────────────────────────────────
 print("Training LIQUID composition regressor...")
-liquid_df = df[df['phase'] == 'LIQUID']
-X_liq = liquid_df[FEATURES].values
-y_liq = liquid_df[['X_Nd','X_B','X_Fe']].values
-
+liq_train = df_train[df_train['phase'] == 'LIQUID']
+X_liq_tr  = liq_train[FEATURES].values
+y_liq_tr  = liq_train[['X_Nd', 'X_B', 'X_Fe']].values
 liquid_regressor = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
-liquid_regressor.fit(X_liq, y_liq)
-
+liquid_regressor.fit(X_liq_tr, y_liq_tr)
 joblib.dump(liquid_regressor, 'models/rf_liquid_regressor_constrained.pkl')
-print("LIQUID regressor saved → models/rf_liquid_regressor_constrained.pkl\n")
+print("LIQUID regressor saved.")
 
-print("=== Training complete. All models saved to models/ ===")
+# ── Correlation matrix ─────────────────────────────────────────────────────────
+print("\nBuilding correlation matrix...")
+corr_rows = []
+for (x_nd, x_b, temp), grp in df_train.groupby(['x_Nd', 'x_B', 'temperature_C']):
+    row = {'x_Nd': x_nd, 'x_B': x_b, 'x_Fe': grp['x_Fe'].iloc[0], 'temperature_C': temp}
+    for phase in PHASES:
+        ph = grp[grp['phase'] == phase]
+        row[f'NP_{phase}'] = ph['NP'].values[0] if len(ph) > 0 else 0.0
+        if phase == 'LIQUID' and len(ph) > 0:
+            row['LIQUID_X_Nd'] = ph['X_Nd'].values[0]
+            row['LIQUID_X_B']  = ph['X_B'].values[0]
+            row['LIQUID_X_Fe'] = ph['X_Fe'].values[0]
+    corr_rows.append(row)
+pd.DataFrame(corr_rows).fillna(0).corr().round(4).to_csv('reports/correlation_matrix.csv')
+print("Correlation matrix saved → reports/correlation_matrix.csv")
+
+print("\n=== Training complete. Run train_compare.py for evaluation. ===")
