@@ -1,0 +1,25 @@
+phase,target,training_mean,training_std,training_unique,description
+BCC_A2,X_B,6.450062893389848e-06,1.3334733326527345e-05,3414,near-constant/stoichiometric target; no ML regression
+BCC_A2,X_DY,4.7890519012326197e-05,0.00191985096442896,3131,near-constant/stoichiometric target; no ML regression
+DYB2,X_B,0.6666999999999998,1.1102230246251565e-16,1,near-constant/stoichiometric target; no ML regression
+DYB2,X_DY,0.33329999999999993,5.551115123125783e-17,1,near-constant/stoichiometric target; no ML regression
+DYB2,X_FE,0.0,0.0,1,near-constant/stoichiometric target; no ML regression
+DYB2,X_ND,0.0,0.0,1,near-constant/stoichiometric target; no ML regression
+DYFE3,X_B,0.0,0.0,1,near-constant/stoichiometric target; no ML regression
+DYFE3,X_DY,0.25,0.0,1,near-constant/stoichiometric target; no ML regression
+DYFE3,X_FE,0.75,0.0,1,near-constant/stoichiometric target; no ML regression
+DYFE3,X_ND,0.0,0.0,1,near-constant/stoichiometric target; no ML regression
+FCC_A1,X_B,5.2890127579494736e-05,3.072230956737197e-05,3379,near-constant/stoichiometric target; no ML regression
+FCC_A1,X_DY,5.550517456750641e-05,5.595150120266751e-05,3295,near-constant/stoichiometric target; no ML regression
+FCC_A1,X_FE,0.9932688531640022,0.004324154957559787,3361,near-constant/stoichiometric target; no ML regression
+FCC_A1,X_ND,0.006622751533850828,0.004343635246997675,3373,near-constant/stoichiometric target; no ML regression
+FE14ND2B,X_B,0.05879999999999998,3.22984379061647e-17,2,near-constant/stoichiometric target; no ML regression
+FE14ND2B,X_FE,0.8234999999999999,1.691026161853553e-16,12,near-constant/stoichiometric target; no ML regression
+FE2ND5B6,X_B,0.4615000000000001,6.884510245609891e-17,2,near-constant/stoichiometric target; no ML regression
+FE2ND5B6,X_DY,0.0,0.0,1,near-constant/stoichiometric target; no ML regression
+FE2ND5B6,X_FE,0.15389999999999998,4.258329621893088e-17,2,near-constant/stoichiometric target; no ML regression
+FE2ND5B6,X_ND,0.38459999999999994,5.551115123125783e-17,1,near-constant/stoichiometric target; no ML regression
+FE4NDB4,X_B,0.4395604400000001,1.0994065007457856e-16,6,near-constant/stoichiometric target; no ML regression
+FE4NDB4,X_FE,0.4395604400000001,1.11891617366015e-16,7,near-constant/stoichiometric target; no ML regression
+HCP_A3,X_B,0.0,0.0,1,near-constant/stoichiometric target; no ML regression
+HCP_A3,X_FE,0.0,0.0,1,near-constant/stoichiometric target; no ML regression

@@ -1,0 +1,25 @@
+{
+  "data": "/data/b23_himanshu_shekhar/thermolm/DNFB_12_dataset_long.csv",
+  "rows_used": 1532128,
+  "phases_selected": [
+    "BCC_A2",
+    "DYB2",
+    "DYFE3",
+    "FCC_A1",
+    "FE14ND2B",
+    "FE2ND5B6",
+    "FE4NDB4",
+    "HCP_A3",
+    "LIQUID"
+  ],
+  "np_threshold": 0.005,
+  "min_positive_compositions": 500,
+  "min_positive_split_rows": 50,
+  "min_negative_split_rows": 50,
+  "min_x_std": 0.005,
+  "split": "70/15/15 exact-composition grouped",
+  "random_seed": 42,
+  "train_rows": 1072032,
+  "validation_rows": 230048,
+  "test_rows": 230048
+}
