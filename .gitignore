@@ -14,3 +14,13 @@ compare2.py
 
 
 /reports/
+
+DNFB_12_dataset.csv
+DNFB_12_dataset_long.csv
+benchmark_alloy_models_fixed.py
+benchmark_alloy_models.py
+publication_alloy_pipeline.py
+
+
+/backup/
+/dataset/
