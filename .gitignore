@@ -24,3 +24,6 @@ publication_alloy_pipeline.py
 
 /backup/
 /dataset/
+
+/baseline_runs/
+phase_support_inspection.csv
