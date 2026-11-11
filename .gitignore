@@ -38,3 +38,5 @@ phase_fraction_ann.pt
 plot_benchmark_from_long_csv.py
 gradient_boost_regression.py
 phase_fraction_gradient_boost.joblib
+
+/benchmark_plots/
