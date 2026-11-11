@@ -27,3 +27,14 @@ publication_alloy_pipeline.py
 
 /baseline_runs/
 phase_support_inspection.csv
+
+/regdiag_full/
+/regdiag_scan/
+
+multilabel_phase_ann.pt
+conditional_phase_regressors.pt
+phase_fraction_ann.pt
+
+plot_benchmark_from_long_csv.py
+gradient_boost_regression.py
+phase_fraction_gradient_boost.joblib
